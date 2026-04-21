@@ -125,7 +125,7 @@ Stderr (final line on success):
 Resolution rules:
 - Expected outcome is derived from the filename: `contains("unmatch")` → `NO_MATCH`; `startsWith("retention_")` → `NO_MATCH`; otherwise `MATCH`. Documented as a comment next to the derivation.
 - HA-PG mode iff `--ha-db-params` was provided.
-- `LoadTestMain` reads the JSON (classpath first, filesystem fallback — same as `main`), parses a `RulesSet`, creates a `Payload`, then dispatches to `LoadRunner` or `HaLoadRunner`.
+- `LoadTestMain` reads the JSON (classpath first, filesystem fallback — same as `main`), parses the `RuleSet` map once, derives the `RulesSet` and a `rulesetJson` string, and dispatches to `LoadRunner` or `HaLoadRunner` passing the raw `rulesSetMap`. `Payload` construction happens inside the runner's lambda — see §5.2.
 - On success, writes the metric line via `MetricReporter` and exits 0.
 - On failure, lets the exception propagate — the JVM prints a stack trace to stderr and exits non-zero.
 
@@ -135,25 +135,26 @@ Dropped vs the existing `Main`: the bare `--ha` flag, `--ha-uuid`, `--failover-r
 
 ```java
 public final class LoadRunner {
-    public static Result run(RulesSet rulesSet, Payload payload,
+    public static Result run(RulesSet rulesSet, Map rulesSetMap,
                              ExpectedOutcome expected, String eventsJson);
 }
 ```
 
 Flow:
 1. Create `AstRulesEngine`, `engine.createRuleset(rulesSet)`.
-2. `TimedResult t = Measurement.timeWork(() -> payload.execute(engine, id))` — captures `matches` and `durationMs`.
+2. `TimedResult t = Measurement.timeWork(() -> { Payload p = Payload.parsePayload(rulesSetMap); return p.execute(engine, id); })` — Payload is constructed and used entirely inside the lambda, so after `timeWork` returns the Payload is unreachable. `t.matches` holds fresh Jackson maps produced by `Payload.execute` — no back-reference to Payload internals.
 3. `OutcomeCheck.verify(t.matches, expected, eventsJson)` — throws on mismatch.
-4. Null the local `payload` reference (so GC can reclaim the event list) (so GC can reclaim it).
-5. `long mem = Measurement.captureUsedMemoryAfterGc()` — runs the GC dance and reads `totalMemory - freeMemory`.
-6. Return `new Result(t.matches, t.durationMs, mem)`.
+4. `long mem = Measurement.captureUsedMemoryAfterGc()` — the GC dance reclaims the Payload and its event list; no explicit nulling needed.
+5. Return `new Result(t.matches, t.durationMs, mem)`.
+
+Why pass `rulesSetMap` instead of a constructed `Payload`: if `LoadTestMain` built the `Payload` and passed it in, LoadTestMain would hold a stack-frame reference to it across the GC dance, inflating the memory reading. Keeping Payload's lifetime inside the runner's lambda eliminates that cross-frame reference. It also avoids the lambda-capture rule that would forbid a later `payload = null` reassignment.
 
 ### 5.3 `HaLoadRunner` (HA-PG)
 
 ```java
 public final class HaLoadRunner {
     public static Result runLoad(RulesSet rulesSet, String rulesetJson,
-                                 Payload payload, String haDbParamsJson,
+                                 Map rulesSetMap, String haDbParamsJson,
                                  ExpectedOutcome expected, String eventsJson);
 }
 ```
@@ -164,12 +165,11 @@ Flow:
 3. `engine.createRuleset(rulesSet, rulesetJson)`.
 4. Open a socket to `localhost:engine.port()` (required for HA's `isConnected()` check).
 5. `engine.enableLeader()`.
-6. `TimedResult t = Measurement.timeWork(() -> payload.execute(engine, id))`.
+6. `TimedResult t = Measurement.timeWork(() -> { Payload p = Payload.parsePayload(rulesSetMap); return p.execute(engine, id); })` — Payload is scoped to the lambda, same rationale as `LoadRunner`.
 7. `OutcomeCheck.verify(t.matches, expected, eventsJson)` — throws on mismatch.
-8. Null the local `payload` reference (so GC can reclaim the event list).
-9. `long mem = Measurement.captureUsedMemoryAfterGc()`.
-10. Return `new Result(t.matches, t.durationMs, mem)`.
-11. Close socket in `finally`; socket-close failures `WARN`-log, do not fail the run.
+8. `long mem = Measurement.captureUsedMemoryAfterGc()` — GC dance reclaims the Payload.
+9. Return `new Result(t.matches, t.durationMs, mem)`.
+10. Close socket in `finally`; socket-close failures `WARN`-log, do not fail the run.
 
 Returns the same `Result` shape as `LoadRunner`.
 
