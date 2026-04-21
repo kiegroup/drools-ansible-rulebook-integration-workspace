@@ -58,7 +58,7 @@ proactively suggest writing a handover before continuing.
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Project
+## Project Type
 
 **type:** java
 **GitHub repo:** kiegroup/drools-ansible-rulebook-integration
