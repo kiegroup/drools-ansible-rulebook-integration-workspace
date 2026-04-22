@@ -142,8 +142,8 @@ public final class LoadRunner {
 
 Flow:
 1. Create `AstRulesEngine`, `engine.createRuleset(rulesSet)`.
-2. `TimedResult t = Measurement.timeWork(() -> { Payload p = Payload.parsePayload(rulesSetMap); return p.execute(engine, id); })` — Payload is constructed and used entirely inside the lambda, so after `timeWork` returns the Payload is unreachable. `t.matches` holds fresh Jackson maps produced by `Payload.execute` — no back-reference to Payload internals.
-3. `OutcomeCheck.verify(t.matches, expected, eventsJson)` — throws on mismatch.
+2. `TimedResult t = Measurement.timeWork(() -> { Payload p = Payload.parsePayload(rulesSetMap); return p.execute(engine, id); })` — Payload is constructed and used entirely inside the lambda, so after `timeWork` returns the Payload is unreachable. `Payload.execute` returns an `Execution` wrapper carrying both the match list and `matchCount`; `matchCount` is tracked independently of the Payload's `discard_matched_events` flag so callers can check whether matches occurred even when the list is intentionally empty for memory reasons.
+3. `OutcomeCheck.verify(t.matchCount, expected, eventsJson)` — throws on mismatch.
 4. `long mem = Measurement.captureUsedMemoryAfterGc()` — the GC dance reclaims the Payload and its event list; no explicit nulling needed.
 5. Return `new Result(t.matches, t.durationMs, mem)`.
 
@@ -165,8 +165,8 @@ Flow:
 3. `engine.createRuleset(rulesSet, rulesetJson)`.
 4. Open a socket to `localhost:engine.port()` (required for HA's `isConnected()` check).
 5. `engine.enableLeader()`.
-6. `TimedResult t = Measurement.timeWork(() -> { Payload p = Payload.parsePayload(rulesSetMap); return p.execute(engine, id); })` — Payload is scoped to the lambda, same rationale as `LoadRunner`.
-7. `OutcomeCheck.verify(t.matches, expected, eventsJson)` — throws on mismatch.
+6. `TimedResult t = Measurement.timeWork(() -> { Payload p = Payload.parsePayload(rulesSetMap); return p.execute(engine, id); })` — Payload is scoped to the lambda, same rationale as `LoadRunner`. `t` carries both the match list and `matchCount`.
+7. `OutcomeCheck.verify(t.matchCount, expected, eventsJson)` — throws on mismatch.
 8. `long mem = Measurement.captureUsedMemoryAfterGc()` — GC dance reclaims the Payload.
 9. Return `new Result(t.matches, t.durationMs, mem)`.
 10. Close socket in `finally`; socket-close failures `WARN`-log, do not fail the run.
@@ -180,14 +180,15 @@ Two responsibilities, two methods. The outcome check must run between them, so t
 ```java
 public final class Measurement {
     // Time a piece of work and return its result + duration.
-    public static TimedResult timeWork(Supplier<List<Map>> work);
+    public static TimedResult timeWork(Supplier<Payload.Execution> work);
 
     // Run the GC dance (System.gc(); sleep(1000); System.gc()) and
     // return the post-GC used-memory snapshot.
     public static long captureUsedMemoryAfterGc();
 
     public static final class TimedResult {
-        public final List<Map> matches;
+        public final List<Map> matches;   // empty when discard_matched_events=true
+        public final int matchCount;      // always accurate; source of truth for OutcomeCheck
         public final long durationMs;
         // ctor, getters...
     }
@@ -218,16 +219,18 @@ This format is the bash/Java contract: `fmt_parse_metrics` in `common.sh` splits
 public enum ExpectedOutcome { MATCH, NO_MATCH }
 
 public final class OutcomeCheck {
-    public static void verify(List<Map> matches,
+    public static void verify(int matchCount,
                               ExpectedOutcome expected,
                               String eventsJson);
 }
 ```
 
-- `MATCH` and `matches.isEmpty()` → `throw new RuntimeException("Expected at least one match but got 0 (events: <eventsJson>)")`.
-- `NO_MATCH` and `!matches.isEmpty()` → `throw new RuntimeException("Expected no matches but got " + matches.size() + " (events: <eventsJson>, first match: " + matches.get(0) + ")")`.
+- `MATCH` and `matchCount == 0` → `throw new RuntimeException("Expected at least one match but got 0 (events: <eventsJson>)")`.
+- `NO_MATCH` and `matchCount > 0` → `throw new RuntimeException("Expected no matches but got " + matchCount + " (events: <eventsJson>)")`.
 
 Pure, deterministic, trivially unit-testable.
+
+Why `int matchCount` rather than the match list: `Payload` (copied from `main/`) skips accumulation when `discard_matched_events=true`, which all `24kb_*_events.json` files set to `true` so the 1m-event run doesn't OOM on client-side match retention. A list-based check would therefore see zero matches even when every event matched. `PayloadRunner` maintains `matchCount` as a counter that always increments regardless of the discard flag — the authoritative signal for whether the engine matched anything.
 
 ### 5.7 `PayloadGenerator` (separate `main`)
 
@@ -395,7 +398,7 @@ Unit tests only in this module:
 
 - `MeasurementTest` — trivial work lambda; assert non-zero duration and positive `usedMemoryBytes`.
 - `MetricReporterTest` — assert exact line format for noHA (`"24kb_1k_events.json, 5200000, 195"`) and HA-PG (`"24kb_1k_events.json (HA-PG), 7100000, 240"`). Regression fence for the bash contract.
-- `OutcomeCheckTest` — all four combinations (MATCH/no-matches, MATCH/some-matches, NO_MATCH/no-matches, NO_MATCH/some-matches); assert the thrown exception includes the events-json name and, for `NO_MATCH` failures, the actual count.
+- `OutcomeCheckTest` — all four combinations (MATCH/zero, MATCH/non-zero, NO_MATCH/zero, NO_MATCH/non-zero) driven by the `matchCount` int; assert the thrown exception includes the events-json name and, for `NO_MATCH` failures, the actual count.
 - `MemoryLeakAnalyzerTest` — fixture result files covering (a) 4 clean groups (no leak), (b) one group with a 200MB single-step spike (leak), (c) one group with two consecutive 3× accelerations (leak). Use a `ParseResult`/`analyzeResults` split so tests avoid `System.exit`.
 
 No JUnit coverage for `LoadRunner` / `HaLoadRunner` — they pull in the full `AstRulesEngine` and DB; the underlying behavior is covered by `main`'s `PerfTest`, `ha-tests`, and the scripts themselves.

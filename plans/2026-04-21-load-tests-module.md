@@ -25,6 +25,23 @@ All git commands in the plan target the **project repo**. Use `git -C /home/tkob
 
 ---
 
+## Post-execution amendment — 2026-04-22
+
+The plan below was executed end-to-end. Task 8's Step 5 smoke test surfaced a cross-cutting defect in Tasks 3–7 that the plan's task bodies do not anticipate:
+
+- **Symptom:** `OutcomeCheck.verify` threw on every `24kb_*_events.json` match scenario even though the engine matched all events (`eventsMatched=1000` in session stats).
+- **Root cause:** `Payload` (copied verbatim from `main/` in Task 3) skips accumulating matches when `discard_matched_events=true`, which all match scenarios set for memory reasons. The spec-designed `OutcomeCheck.verify(List<Map>, …)` therefore saw an empty list even when matches occurred.
+- **Fix (commit `b6f1b338`):**
+  - `PayloadRunner` tracks `matchCount` as a counter that increments regardless of `discardMatchedEvents`.
+  - `Payload.execute` now returns `Payload.Execution` (wrapper holding `matches` list + `matchCount`).
+  - `Measurement.TimedResult` gains `int matchCount`; `timeWork` takes `Supplier<Payload.Execution>`.
+  - `OutcomeCheck.verify` signature changes to `(int matchCount, ExpectedOutcome, String eventsJson)`. The `NO_MATCH` error message drops the "first match" hint since the list is now authoritative for display only.
+  - `LoadRunner` / `HaLoadRunner` pass `t.matchCount` to `OutcomeCheck`; still pass `t.matches` into `Result`.
+
+If you are replaying this plan from scratch on a clean checkout, merge this fix into Task 3 (Payload) and Tasks 4, 5, 7 (OutcomeCheck, Measurement, LoadRunner/HaLoadRunner) code blocks before executing — don't copy verbatim. The spec (`specs/2026-04-21-load-tests-module-design.md`, §5.2, §5.3, §5.4, §5.6) has been updated to reflect the final signatures.
+
+---
+
 ## Task 1: Cut `reorganize-load-test` in the project repo
 
 **Files:** none yet. This task only manipulates branch state.
