@@ -90,6 +90,9 @@ mvn -pl drools-ansible-rulebook-integration-tests -Pmemoryleak-tests test
 
 # Run REST service in dev mode
 cd drools-ansible-rulebook-integration-core-rest && mvn compile quarkus:dev
+
+# Build the load-test uber-jar (prerequisite for the load_test_*.sh scripts)
+mvn -pl drools-ansible-rulebook-integration-load-tests -am package -DskipTests
 ```
 
 **Important:** If you modify any Maven module, run `mvn -pl <modified-module> -am install` before running tests in dependent modules.
@@ -106,6 +109,7 @@ cd drools-ansible-rulebook-integration-core-rest && mvn compile quarkus:dev
 | `benchmark` | JMH performance benchmarks |
 | `tests` | Integration tests for the rule engine |
 | `ha/` | High Availability meta-module containing 4 submodules (see below) |
+| `load-tests` | Greenfield load-test infrastructure: fat-jar CLI (`LoadTestMain`), `PayloadGenerator`, HA-aware `MemoryLeakAnalyzer`, and 5 shell scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_HA.sh`) sharing `lib/common.sh`. Isolated from `main` |
 
 ## HA Subsystem Architecture
 
