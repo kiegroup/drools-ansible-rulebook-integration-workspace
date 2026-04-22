@@ -1,52 +1,44 @@
-# Handoff — 2026-04-21
+# Handover — 2026-04-22
 
-Mid-implementation of greenfield Maven sub-module `drools-ansible-rulebook-integration-load-tests`. Spec and plan approved; Tasks 1-7 of 12 committed; Task 8 partially done.
+**Previous handover:** `git show HEAD~1:HANDOFF.md` | diff: `git diff HEAD~1 HEAD -- HANDOFF.md`
 
-## Working locations
+## What Changed This Session
 
-- **Project repo:** `/home/tkobayas/usr/work/eda-HA-PoC/load-test-organize/drools-ansible-rulebook-integration-2.0.x`, branch `reorganize-load-test` (cut from `2.0.x`; **never commit to `2.0.x`**)
-- **Workspace repo:** this repo, branch `reorganize-load-test`
-- **Spec:** `specs/2026-04-21-load-tests-module-design.md`
-- **Plan:** `plans/2026-04-21-load-tests-module.md` — authoritative task list (12 tasks)
+- Finished Tasks 8–12 of the load-tests plan. Bug found during Task 8 smoke (OutcomeCheck saw empty match list when `discard_matched_events=true` — the spec's list-based check was wrong). Fix: thread `int matchCount` through `Payload.Execution → Measurement.TimedResult`, change `OutcomeCheck.verify(int, …)`. Commits `b6f1b338` (fix), `47fc7636` … `8f744277` (Tasks 8–11), `bad70a29` (Task 9).
+- Post-plan: added **5k** event-count variant (`PayloadGenerator` + `MemoryLeakAnalyzer` + two new JSONs; existing 11 JSONs byte-identical). Commit `198c77db`.
+- Post-plan: replaced `load_test_all.sh` with two scripts by cost profile. Commit `364cb289`.
+  - `load_test_match_unmatch_noHA.sh` — 4 sizes × match/unmatch × noHA = 8 runs, no Docker.
+  - `load_test_match_unmatch_HA.sh` — 3 sizes (1k/5k/10k) × match/unmatch × {noHA, HA-PG} = 12 runs.
+- User ran and verified both new scripts. Branch pushed to `origin/reorganize-load-test`.
+- Workspace-repo: spec §5.2/5.3/5.4/5.6/§9 + plan amendment note synced for OutcomeCheck signature change (`9a4c06d`). CLAUDE.md gained load-tests module row + fat-jar build command (`a3f4f6a`). First blog entry written (`0d7cc2c`).
 
-## Hard constraints
+## State Right Now
 
-- **Do not modify any file under `drools-ansible-rulebook-integration-main/`.** Only permitted change outside the new module was one `<module>` line in the root reactor `pom.xml`.
-- Use `git -C <path> <cmd>` form for all git commands (user preference).
-- Tasks 2-3 commits (`e4a966ad`, `df1c0c82`) are not issue-linked — accepted gap, start linking from Task 4 onward.
+All 12 plan tasks complete. Branch pushed, no PR. 5 load-test scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_HA.sh`) verified.
 
-## Progress (project repo)
+Project repo `reorganize-load-test` is 12 commits ahead of `2.0.x` since branch cut.
 
-Commits on `reorganize-load-test`:
-```
-f6c5ccc9 Task 7 — LoadTestMain + LoadRunner + HaLoadRunner + Result  (Closes #3)
-5fea3c22 Task 6 — MetricReporter                                      (Refs #3)
-074b52e4 Task 5 — Measurement                                         (Refs #3)
-14fe3736 Task 4 — ExpectedOutcome + OutcomeCheck                      (Refs #3)
-df1c0c82 Task 3 — copy Payload                                        (unlinked)
-e4a966ad Task 2 — module scaffold                                     (unlinked)
-```
+## Immediate Next Step
 
-`#N` references are `kiegroup/drools-ansible-rulebook-integration-workspace#N`. Issue repo is **not** the code repo — it's the separate workspace repo: epic #1, children #2-#7 (see epic body for scope mapping).
+User's call — no hard next. Three open housekeeping items if picked up:
 
-## Task 8 in flight
+1. Workspace spec/plan still reference `load_test_all.sh` and don't mention the 5k variant. Follow the same amendment-note pattern as `9a4c06d`.
+2. `.gitignore` the load-test result/log files (`drools-ansible-rulebook-integration-load-tests/result_*.txt`, `out_*.log`) — currently untracked in project repo.
+3. Open PR against `kiegroup/drools-ansible-rulebook-integration` `2.0.x` when ready.
 
-- `PayloadGenerator.java` exists at `drools-ansible-rulebook-integration-load-tests/src/main/java/org/drools/ansible/rulebook/integration/loadtests/gen/` (uncommitted, `??` in git status).
-- Generator was run once; 11 JSON resources written to `src/main/resources/` (all uncommitted, sizes ~24KB each).
-- Smoke-test of generated JSONs (`java -jar target/…-jar-with-dependencies.jar 24kb_1k_events.json`) was interrupted — never verified that the JSONs parse and run through the engine.
+## Open Questions / Blockers
 
-## Next step (specific)
+None.
 
-1. `cd /home/tkobayas/usr/work/eda-HA-PoC/load-test-organize/drools-ansible-rulebook-integration-2.0.x && mvn -pl drools-ansible-rulebook-integration-load-tests -am package -DskipTests`
-2. Smoke: `java -Xmx512m -jar drools-ansible-rulebook-integration-load-tests/target/drools-ansible-rulebook-integration-load-tests-jar-with-dependencies.jar 24kb_1k_events.json` — expect stderr line `24kb_1k_events.json, <bytes>, <ms>`; no `OutcomeCheck` throw.
-3. If OK, commit PayloadGenerator + 11 JSONs with `Closes kiegroup/drools-ansible-rulebook-integration-workspace#4` (see plan Task 8 Step 6 for exact message).
-4. Continue to Task 9 (MemoryLeakAnalyzer port with HA-aware 4-group analysis) — spec §5.8, plan Task 9.
+## References
 
-## Execution mode
+| Context | Where | Retrieve with |
+|---------|-------|---------------|
+| Spec (authoritative system design) | `specs/2026-04-21-load-tests-module-design.md` | `cat` that file |
+| Plan (post-execution amended) | `plans/2026-04-21-load-tests-module.md` | `cat` that file |
+| This session's narrative | `blog/2026-04-22-tk01-load-tests-smoke-and-split.md` | `cat` that file |
+| Previous handover | git history | `git show HEAD~1:HANDOFF.md` |
 
-User switched from subagent-driven to **inline execution** mid-session (subagents felt slow). Continue inline: write files → run tests/build → commit → next task. No spec/code-quality review dispatches.
+## Environment
 
-## References (read on demand)
-
-- Plan tasks remaining: 9, 10, 11, 12 — see `plans/2026-04-21-load-tests-module.md` for exact code and commands.
-- GH epic: `https://github.com/kiegroup/drools-ansible-rulebook-integration-workspace/issues/1`
+Project-repo `CLAUDE.md` is a **symlink** to the workspace `CLAUDE.md` — edits land in the workspace repo and commit there. The project repo does not track CLAUDE.md content directly.
