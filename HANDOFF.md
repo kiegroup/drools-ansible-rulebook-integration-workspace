@@ -8,13 +8,13 @@
 - Post-plan: added **5k** event-count variant (`PayloadGenerator` + `MemoryLeakAnalyzer` + two new JSONs; existing 11 JSONs byte-identical). Commit `198c77db`.
 - Post-plan: replaced `load_test_all.sh` with two scripts by cost profile. Commit `364cb289`.
   - `load_test_match_unmatch_noHA.sh` — 4 sizes × match/unmatch × noHA = 8 runs, no Docker.
-  - `load_test_match_unmatch_HA.sh` — 3 sizes (1k/5k/10k) × match/unmatch × {noHA, HA-PG} = 12 runs.
+  - `load_test_match_unmatch_noHA-PGHA.sh` — 3 sizes (1k/5k/10k) × match/unmatch × {noHA, HA-PG} = 12 runs. (Renamed from `load_test_match_unmatch_HA.sh` in `3f4206f2`; `load_test_retention.sh` renamed to `load_test_retention_noHA-PGHA.sh` in the same commit.)
 - User ran and verified both new scripts. Branch pushed to `origin/reorganize-load-test`.
 - Workspace-repo: spec §5.2/5.3/5.4/5.6/§9 + plan amendment note synced for OutcomeCheck signature change (`9a4c06d`). CLAUDE.md gained load-tests module row + fat-jar build command (`a3f4f6a`). First blog entry written (`0d7cc2c`).
 
 ## State Right Now
 
-All 12 plan tasks complete. Branch pushed, no PR. 5 load-test scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_HA.sh`) verified.
+All 12 plan tasks complete. Branch pushed, no PR. 5 load-test scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention_noHA-PGHA.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_noHA-PGHA.sh`) verified.
 
 Project repo `reorganize-load-test` is 12 commits ahead of `2.0.x` since branch cut.
 

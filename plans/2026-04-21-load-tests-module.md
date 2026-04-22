@@ -42,6 +42,22 @@ If you are replaying this plan from scratch on a clean checkout, merge this fix 
 
 ---
 
+## Post-execution amendment — 2026-04-22 (script rename)
+
+After the plan finished and the branch was pushed, the two combined-run scripts were renamed in project-repo commit `3f4206f2` to make their HA-mode coverage explicit in the filename:
+
+- `load_test_match_unmatch_HA.sh` → `load_test_match_unmatch_noHA-PGHA.sh`
+- `load_test_retention.sh` → `load_test_retention_noHA-PGHA.sh`
+
+Output files renamed in lockstep inside each script:
+
+- `result_match_unmatch_HA.txt` / `out_match_unmatch_HA.log` → `result_match_unmatch_noHA-PGHA.txt` / `out_match_unmatch_noHA-PGHA.log`
+- `result_retention.txt` / `out_retention.log` → `result_retention_noHA-PGHA.txt` / `out_retention_noHA-PGHA.log`
+
+Historical task bodies below (Step 3 "Create `load_test_retention.sh`", Step 5 "Run `load_test_retention.sh`", and the `MemoryLeakAnalyzer` invocation examples) are preserved as originally written — use the renamed filenames when replaying. Spec §2, §4 (file tree), and §6.4 have been updated in-place; the `load_test_match_unmatch_*` scripts were never in the spec (they came from the earlier `load_test_all.sh` split in commit `364cb289` and remain to be folded into the spec as a separate housekeeping item).
+
+---
+
 ## Task 1: Cut `reorganize-load-test` in the project repo
 
 **Files:** none yet. This task only manipulates branch state.
