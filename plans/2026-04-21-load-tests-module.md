@@ -54,7 +54,22 @@ Output files renamed in lockstep inside each script:
 - `result_match_unmatch_HA.txt` / `out_match_unmatch_HA.log` → `result_match_unmatch_noHA-PGHA.txt` / `out_match_unmatch_noHA-PGHA.log`
 - `result_retention.txt` / `out_retention.log` → `result_retention_noHA-PGHA.txt` / `out_retention_noHA-PGHA.log`
 
-Historical task bodies below (Step 3 "Create `load_test_retention.sh`", Step 5 "Run `load_test_retention.sh`", and the `MemoryLeakAnalyzer` invocation examples) are preserved as originally written — use the renamed filenames when replaying. Spec §2, §4 (file tree), and §6.4 have been updated in-place; the `load_test_match_unmatch_*` scripts were never in the spec (they came from the earlier `load_test_all.sh` split in commit `364cb289` and remain to be folded into the spec as a separate housekeeping item).
+Historical task bodies below (Step 3 "Create `load_test_retention.sh`", Step 5 "Run `load_test_retention.sh`", and the `MemoryLeakAnalyzer` invocation examples) are preserved as originally written — use the renamed filenames when replaying. Spec §2, §4 (file tree), and §6.4 have been updated in-place; the `load_test_match_unmatch_*` scripts were never in the spec (they came from the earlier `load_test_all.sh` split in commit `364cb289`). The split and the 5k variant were subsequently folded into the spec — see the 2026-04-23 amendment below.
+
+---
+
+## Post-execution amendment — 2026-04-23 (spec sync: script split + 5k variant)
+
+Two pending items tracked in the 2026-04-22 handover folded into the spec in one pass:
+
+1. **`load_test_all.sh` → `load_test_match_unmatch_{noHA,noHA-PGHA}.sh` split** (project-repo commit `364cb289`, 2026-04-22). The spec previously described only the pre-split `load_test_all.sh` (4 sizes × match/unmatch × noHA/HA-PG = 16 runs). It now describes the as-built pair:
+   - `load_test_match_unmatch_noHA.sh`: 4 sizes × match/unmatch × noHA = 8 runs, no Docker.
+   - `load_test_match_unmatch_noHA-PGHA.sh`: 3 sizes (1k/5k/10k) × match/unmatch × {noHA, HA-PG} = 12 runs. Upper bound capped at 10k because HA-PG above that is prohibitively slow for interactive iteration.
+   Spec touches: §2 (goals), §3 (non-goals: CI wiring), §4 (file tree), §6.5 (rewritten from the `load_test_all.sh` section), §8.2 (`jvm_run` rationale), §10 ("The 5 scripts").
+
+2. **5k event-count variant** (project-repo commit `198c77db`, 2026-04-22). `PayloadGenerator` emits `24kb_5k_events.json` / `24kb_5k_events_unmatch.json`; `MemoryLeakAnalyzer.extractEventCount` recognises the `5k_` prefix. Consumed only by `load_test_match_unmatch_noHA-PGHA.sh` — the three single-size scripts still take `[1k|10k|100k|1m]`. Spec touches: §4 (resources list), §6.5 (size loop), §7.3 (`repeat_count` column gains `5000`).
+
+Historical task bodies in the plan are unchanged. Replayers hitting Task 8 ("`PayloadGenerator`") should add `"5k"` to the size list so the 11-element JSON set becomes 13. Replayers hitting Task 11 ("Step 4: Create `load_test_all.sh`") should instead create the two split scripts per the updated spec §6.5 — same `lib/common.sh` helpers, same `MemoryLeakAnalyzer` hand-off, different outer loops and filenames.
 
 ---
 
