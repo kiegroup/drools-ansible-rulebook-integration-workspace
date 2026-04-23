@@ -1,30 +1,28 @@
-# Handover — 2026-04-22
+# Handover — 2026-04-23
 
-**Previous handover:** `git show HEAD~1:HANDOFF.md` | diff: `git diff HEAD~1 HEAD -- HANDOFF.md`
+**Previous handover:** `git show HEAD~7:HANDOFF.md` · diff: `git diff HEAD~7 HEAD -- HANDOFF.md`
 
 ## What Changed This Session
 
-- Finished Tasks 8–12 of the load-tests plan. Bug found during Task 8 smoke (OutcomeCheck saw empty match list when `discard_matched_events=true` — the spec's list-based check was wrong). Fix: thread `int matchCount` through `Payload.Execution → Measurement.TimedResult`, change `OutcomeCheck.verify(int, …)`. Commits `b6f1b338` (fix), `47fc7636` … `8f744277` (Tasks 8–11), `bad70a29` (Task 9).
-- Post-plan: added **5k** event-count variant (`PayloadGenerator` + `MemoryLeakAnalyzer` + two new JSONs; existing 11 JSONs byte-identical). Commit `198c77db`.
-- Post-plan: replaced `load_test_all.sh` with two scripts by cost profile. Commit `364cb289`.
-  - `load_test_match_unmatch_noHA.sh` — 4 sizes × match/unmatch × noHA = 8 runs, no Docker.
-  - `load_test_match_unmatch_noHA-PGHA.sh` — 3 sizes (1k/5k/10k) × match/unmatch × {noHA, HA-PG} = 12 runs. (Renamed from `load_test_match_unmatch_HA.sh` in `3f4206f2`; `load_test_retention.sh` renamed to `load_test_retention_noHA-PGHA.sh` in the same commit.)
-- User ran and verified both new scripts. Branch pushed to `origin/reorganize-load-test`.
-- Workspace-repo: spec §5.2/5.3/5.4/5.6/§9 + plan amendment note synced for OutcomeCheck signature change (`9a4c06d`). CLAUDE.md gained load-tests module row + fat-jar build command (`a3f4f6a`). First blog entry written (`0d7cc2c`).
+- Ported the last two meaningful `main/` scripts into `-load-tests` as HA-PG-only multi-size no-args drivers:
+  - `load_test_temporal_HA-PG.sh` (3 sizes × 1 phase) — fixes the legacy `once_within` bug. Legacy grouped by `event.meta.uuid` (always unique → degenerate 1-event groups). New design: 10 fixed groups via `event.group_id`, `size/10` events per group. MATCHING rows stay at 10 regardless of size.
+  - `load_test_failover_HA-PG.sh` (3 sizes × 2 phases = 6 JVM runs). Phase 1 loads state under `--ha-uuid`; Phase 2 cold-starts with `--failover-recovery` and times `engine.enableLeader()`.
+- Dropped two `main/` scripts explicitly (not porting): `load_test_90kb.sh`, `load_test_ha_compare.sh` (latter needs H2 backend, not deployed).
+- Java surface additions: `HaFailoverRecoveryRunner`, `Payload.Execution.empty()` factory, `MetricReporter` gains `failoverRecovery` tag, `HaLoadRunner.runLoad` gains `haUuidOverride`, `LoadTestMain` gains `--ha-uuid` / `--failover-recovery` flags + validation.
+- `PayloadGenerator` switched to pretty-printed JSON globally. 13 existing files reformatted in a standalone "semantically zero-op" commit (proven via `json.dumps(sort_keys=True)` canonical diff = empty). 3 new `once_within_*_events.json` files generated. 16 files total.
+- Renamed `load_test_match_unmatch_noHA-PGHA.sh` → `…_noHA_HA-PG.sh` and `load_test_retention_noHA-PGHA.sh` → `…_noHA_HA-PG.sh`. Underscore reads as `{noHA, HA-PG}` set separator; previous compact form fused modes. Spec/plan/CLAUDE/HANDOFF synced.
+- Smoke results: MATCHING=10 at all temporal sizes; failover recovery ratios 7.4% / 1.2% / 0.5% (recovery is near-flat; load scales linearly).
 
 ## State Right Now
 
-All 12 plan tasks complete. Branch pushed, no PR. 5 load-test scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention_noHA_HA-PG.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_noHA_HA-PG.sh`) verified.
-
-Project repo `reorganize-load-test` is 12 commits ahead of `2.0.x` since branch cut.
+Project-repo `reorganize-load-test` is **20 commits ahead** of `2.0.x`, pushed to `origin`. Workspace branch is up to date with its origin. **7 load-test scripts** in the module — `load_test_{match,unmatch}.sh`, `load_test_retention_noHA_HA-PG.sh`, `load_test_match_unmatch_{noHA,noHA_HA-PG}.sh`, `load_test_temporal_HA-PG.sh`, `load_test_failover_HA-PG.sh`. No PR opened.
 
 ## Immediate Next Step
 
-User's call — no hard next. Three open housekeeping items if picked up:
-
-1. Workspace spec/plan still reference `load_test_all.sh` and don't mention the 5k variant. Follow the same amendment-note pattern as `9a4c06d`.
-2. `.gitignore` the load-test result/log files (`drools-ansible-rulebook-integration-load-tests/result_*.txt`, `out_*.log`) — currently untracked in project repo.
-3. Open PR against `kiegroup/drools-ansible-rulebook-integration` `2.0.x` when ready.
+User's call. Three live housekeeping items:
+1. Open PR against `kiegroup/drools-ansible-rulebook-integration` `2.0.x` when ready.
+2. Master spec (`specs/2026-04-21-load-tests-module-design.md`) still doesn't cross-reference the 2026-04-23 spec for temporal+failover. Deferred housekeeping.
+3. Recovery ratios (7.4→1.2→0.5%) may be worth a follow-up blog entry once the numbers are reproduced on a different machine.
 
 ## Open Questions / Blockers
 
@@ -33,12 +31,13 @@ None.
 ## References
 
 | Context | Where | Retrieve with |
-|---------|-------|---------------|
-| Spec (authoritative system design) | `specs/2026-04-21-load-tests-module-design.md` | `cat` that file |
-| Plan (post-execution amended) | `plans/2026-04-21-load-tests-module.md` | `cat` that file |
-| This session's narrative | `blog/2026-04-22-tk01-load-tests-smoke-and-split.md` | `cat` that file |
-| Previous handover | git history | `git show HEAD~1:HANDOFF.md` |
+|---|---|---|
+| Temporal+failover spec (authoritative for today's work) | `specs/2026-04-23-temporal-and-failover-scripts-design.md` | `cat` |
+| Temporal+failover plan | `plans/2026-04-23-temporal-and-failover-scripts.md` | `cat` |
+| Master module spec | `specs/2026-04-21-load-tests-module-design.md` | `cat` |
+| This session's blog | `blog/2026-04-23-tk01-temporal-and-failover-scripts.md` | `cat` |
+| Previous blog | `blog/2026-04-22-tk01-load-tests-smoke-and-split.md` | `cat` |
 
 ## Environment
 
-Project-repo `CLAUDE.md` is a **symlink** to the workspace `CLAUDE.md` — edits land in the workspace repo and commit there. The project repo does not track CLAUDE.md content directly.
+*Unchanged — `git show HEAD~7:HANDOFF.md`*
