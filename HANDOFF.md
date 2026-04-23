@@ -14,7 +14,7 @@
 
 ## State Right Now
 
-All 12 plan tasks complete. Branch pushed, no PR. 5 load-test scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention_noHA-PGHA.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_noHA-PGHA.sh`) verified.
+All 12 plan tasks complete. Branch pushed, no PR. 5 load-test scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention_noHA_HA-PG.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_noHA_HA-PG.sh`) verified.
 
 Project repo `reorganize-load-test` is 12 commits ahead of `2.0.x` since branch cut.
 

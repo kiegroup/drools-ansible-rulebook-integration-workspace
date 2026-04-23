@@ -109,7 +109,7 @@ mvn -pl drools-ansible-rulebook-integration-load-tests -am package -DskipTests
 | `benchmark` | JMH performance benchmarks |
 | `tests` | Integration tests for the rule engine |
 | `ha/` | High Availability meta-module containing 4 submodules (see below) |
-| `load-tests` | Greenfield load-test infrastructure: fat-jar CLI (`LoadTestMain`), `PayloadGenerator`, HA-aware `MemoryLeakAnalyzer`, and 5 shell scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention_noHA-PGHA.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_noHA-PGHA.sh`) sharing `lib/common.sh`. Isolated from `main` |
+| `load-tests` | Greenfield load-test infrastructure: fat-jar CLI (`LoadTestMain`), `PayloadGenerator`, HA-aware `MemoryLeakAnalyzer`, and 5 shell scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention_noHA_HA-PG.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_noHA_HA-PG.sh`) sharing `lib/common.sh`. Isolated from `main` |
 
 ## HA Subsystem Architecture
 

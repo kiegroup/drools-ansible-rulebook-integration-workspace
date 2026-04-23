@@ -73,6 +73,17 @@ Historical task bodies in the plan are unchanged. Replayers hitting Task 8 ("`Pa
 
 ---
 
+## Post-execution amendment — 2026-04-23 (script rename: `noHA-PGHA` → `noHA_HA-PG`)
+
+The two combined-run scripts were renamed again to make the two-mode coverage separator unambiguous — the compact `noHA-PGHA` token fused the two modes together; the underscore form reads as `{noHA, HA-PG}` at a glance:
+
+- `load_test_match_unmatch_noHA-PGHA.sh` → `load_test_match_unmatch_noHA_HA-PG.sh`
+- `load_test_retention_noHA-PGHA.sh` → `load_test_retention_noHA_HA-PG.sh`
+
+Output files renamed in lockstep inside each script (`result_*.txt` / `out_*.log`). Earlier amendments above (2026-04-22 script rename, 2026-04-23 spec sync) preserve the previous names as they existed at the time they were written. Spec §2, §4 (file tree), §6.4, §6.5, §8.2 updated in-place.
+
+---
+
 ## Task 1: Cut `reorganize-load-test` in the project repo
 
 **Files:** none yet. This task only manipulates branch state.
