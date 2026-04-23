@@ -109,7 +109,7 @@ mvn -pl drools-ansible-rulebook-integration-load-tests -am package -DskipTests
 | `benchmark` | JMH performance benchmarks |
 | `tests` | Integration tests for the rule engine |
 | `ha/` | High Availability meta-module containing 4 submodules (see below) |
-| `load-tests` | Greenfield load-test infrastructure: fat-jar CLI (`LoadTestMain`), `PayloadGenerator`, HA-aware `MemoryLeakAnalyzer`, and 5 shell scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention_noHA_HA-PG.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_noHA_HA-PG.sh`) sharing `lib/common.sh`. Isolated from `main` |
+| `load-tests` | Greenfield load-test infrastructure: fat-jar CLI (`LoadTestMain`), `PayloadGenerator`, HA-aware `MemoryLeakAnalyzer`, and 7 shell scripts (`load_test_match.sh`, `load_test_unmatch.sh`, `load_test_retention_noHA_HA-PG.sh`, `load_test_match_unmatch_noHA.sh`, `load_test_match_unmatch_noHA_HA-PG.sh`, `load_test_temporal_HA-PG.sh`, `load_test_failover_HA-PG.sh`) sharing `lib/common.sh`. Isolated from `main` |
 
 ## HA Subsystem Architecture
 
@@ -153,3 +153,7 @@ The Drools 9.103.1 source code (branch `9.103.x-prod-ansible`) is available loca
 - H2 2.3.232, PostgreSQL 42.7.9, HikariCP 5.0.1 (HA persistence)
 - BouncyCastle 1.78.1 (HA encryption/SSL)
 - TestContainers 1.19.0 (HA integration tests with PostgreSQL)
+
+## Writing Style Guide
+
+**The writing style guide at `~/claude-workspace/writing-styles/blog-technical.md` is mandatory for all blog and diary entries.** Load it in full before drafting. Complete the pre-draft voice classification (I / we / Claude-named) before generating any prose. Do not show a draft without verifying it against the style guide.
